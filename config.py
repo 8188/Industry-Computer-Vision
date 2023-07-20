@@ -1,0 +1,6 @@
+class Config(object):
+    REDIS_HOST = '127.0.0.1'
+    REDIS_PORT = '6379'
+    REDIS_PASSWORD = ''
+    REDIS_DATABASE = '0'
+    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DATABASE}"

@@ -1,0 +1,7 @@
+__pycache__/
+logs/
+draft.py
+server.py
+app/static/faces/images/
+yolov3.weights
+yolov3.cfg

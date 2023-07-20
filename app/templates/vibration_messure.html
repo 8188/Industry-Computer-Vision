@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Canvas Image Streaming Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+    <button id="playPauseBtn">暂停</button>
+    <button id="refreshBtn">刷新</button>
+    <button id="messureBtn">选择测量目标</button>
+    <button id="shakeBtn">选择消抖目标</button>
+    <form id="numForm">
+        <label for="num1">测量目标长度(mm)：</label>
+        <input type="number" id="num1" name="num1" value="5"><br>
+
+        <label for="num2">测量目标宽度(mm)：</label>
+        <input type="number" id="num2" name="num2" value="7"><br>
+
+        <button type="button" onclick="submitForm()">确认</button>
+    </form>
+
+    <img src="{{ url_for('main.video_feed_vib') }}" id="frame" width="0" height="0">
+
+    <script>
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+
+        var frame = document.getElementById("frame");
+
+        function loadImages() {
+            frame.onload = function () {
+                setInterval(drawFrame, 50);
+                // 更小的值会增加前端cpu使用率，更大的值导致追踪不精准
+            }
+        }
+
+        var playing = true;
+        var currentFrame;
+
+        function drawFrame() {
+            if (playing) {
+                currentFrame = document.getElementById("frame");
+                ctx.drawImage(currentFrame, 0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        document.getElementById("playPauseBtn").addEventListener("click", function() {
+			if (playing) {
+				playing = false;
+				document.getElementById("playPauseBtn").innerHTML = "播放";
+			} else {
+				playing = true;
+				document.getElementById("playPauseBtn").innerHTML = "暂停";
+			}
+		});
+
+        document.getElementById("refreshBtn").addEventListener("click", function() {
+			fetch('/refresh', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('刷新:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+            window.open('/vib-chart', '_blank');
+		});
+
+        messure_obj = false;
+
+        document.getElementById("messureBtn").addEventListener("click", function() {
+			if (!messure_obj && !shake_obj) {
+                this.style.backgroundColor = "blue";
+				messure_obj = true;
+			} else {
+                this.style.backgroundColor = "greenyellow";
+				messure_obj = false;
+			}
+		});
+
+        shake_obj = false;
+
+        document.getElementById("shakeBtn").addEventListener("click", function() {
+			if (!shake_obj && !messure_obj) {
+                this.style.backgroundColor = "blue";
+				shake_obj = true;
+			} else {
+                this.style.backgroundColor = "greenyellow";
+				shake_obj = false;
+			}
+		});
+
+        loadImages();
+
+        let isFullScreen = false;
+
+        function toggleFullScreen() {
+            if (isFullScreen) {
+                canvas.width = 640;
+                canvas.height = 480;
+                canvas.style.position = '';
+            } else {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                canvas.style.position = 'fixed';
+            }
+            isFullScreen = !isFullScreen;
+        }
+
+        canvas.addEventListener('dblclick', toggleFullScreen);
+
+        var rect = {};
+        var drag = false;
+
+        canvas.addEventListener('mousedown', mouseDown, false);
+        canvas.addEventListener('mouseup', mouseUp, false);
+        canvas.addEventListener('mousemove', mouseMove, false);
+
+        function mouseDown(e) {
+            if (shake_obj || messure_obj) {
+                rect.startX = e.clientX - canvas.offsetLeft;
+                rect.startY = e.clientY - canvas.offsetTop;
+                drag = true;
+            }
+        }
+
+        function mouseUp() {
+            drag = false;
+            writeToRedis(rect);
+        }
+
+        function mouseMove(e) {
+            if (drag) {
+                rect.w = (e.clientX - canvas.offsetLeft) - rect.startX;
+                rect.h = (e.clientY - canvas.offsetTop) - rect.startY;
+                rect.width = Math.abs(rect.w);
+                rect.height = Math.abs(rect.h);
+                rect.startX = rect.w < 0 ? e.clientX - canvas.offsetLeft : rect.startX;
+                rect.startY = rect.h < 0 ? e.clientY - canvas.offsetTop : rect.startY;
+                // 绘制矩形框
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(currentFrame, 0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#FF0000';
+                ctx.strokeRect(rect.startX, rect.startY, rect.width, rect.height);
+            }
+        }
+
+        async function writeToRedis(rect){
+            const data = {
+                'left': rect.startX,
+                'top': rect.startY,
+                'width': rect.width,
+                'height': rect.height
+            };
+            if (messure_obj) {
+                url = "write-bbox/1";
+            } else if (shake_obj) {
+                url = "write-bbox/2";
+            }
+
+            await fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers:{
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Data written to Redis:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        async function submitForm() {
+            // 获取表单数据
+            // const form = document.getElementById("numForm");
+            // const formData = new FormData(form);
+            const num1 = document.querySelector('#num1').value;
+            const num2 = document.querySelector('#num2').value;
+            // 发送POST请求
+            await fetch("/write-len", {
+                method: "POST",
+                body: JSON.stringify({
+                    length: num1,
+                    width: num2
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Data written to Redis:', data);
+            })
+            .catch(error => {
+                console.error("表单提交出错：", error);
+            });
+        }
+
+        window.onbeforeunload = function() {
+            fetch('/turn_off', { method: 'GET' })
+        };
+
+    </script>
+  </body>
+</html>

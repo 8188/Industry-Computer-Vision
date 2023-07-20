@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Canvas Image Streaming Demo</title>
+    <style>
+        .image-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+        }
+
+        .image-container.fullscreen {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .image-container.fullscreen img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            margin-top: 0;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+  </head>
+  <body>
+ 
+    <body>
+        <div class="image-container">
+            <h1>Video 1</h1>
+            <img src="{{ url_for('main.video_feed_hd') }}" alt="Image 1">
+        </div>
+	</body>
+    
+
+    <script>
+        const imageContainer = document.querySelector('.image-container');
+        let isFullscreen = false;
+
+        imageContainer.addEventListener('dblclick', () => {
+        if (isFullscreen) {
+            imageContainer.classList.remove('fullscreen');
+            isFullscreen = false;
+        } else {
+            imageContainer.classList.add('fullscreen');
+            isFullscreen = true;
+        }
+        });
+
+        window.onbeforeunload = function() {
+            fetch('/turn_off', { method: 'GET' })
+        };
+
+    </script>
+  </body>
+</html>

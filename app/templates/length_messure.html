@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title>两个视频左右放置</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">	
+	</head>
+
+	<body>
+		<div class="container">
+			<div class="video-wrapper">
+				<!-- <h1>Video 1</h1> -->
+				<img src="{{ url_for('main.video_feed_lw_l') }}">
+			</div>
+			
+			<div class="video-wrapper">
+				<!-- <h1>Video 2</h1> -->
+				<img src="{{ url_for('main.video_feed_lw_r') }}">
+			</div>
+		</div>
+		<form>
+			<label for="trackbar1">边缘检测低阈值：</label>
+			<input type="range" id="trackbar1" name="trackbar1" min="0" max="255" value="0">
+
+			<label for="trackbar2">边缘检测高阈值：</label>
+			<input type="range" id="trackbar2" name="trackbar2" min="0" max="255" value="255">
+
+			<button type="button" onclick="submitFilter()">确认</button>
+			<!-- 必须有type="button" 否则跳转 -->
+		</form>
+		<form>
+			<label for="trackbar3">直线检测阈值：</label>
+			<input type="range" id="trackbar3" name="trackbar3" min="0" max="640" value="150">
+
+			<button type="button" onclick="submitThreshold()">确认</button>
+		</form>
+		<form>
+			<label for="num1">目标比例尺(像素/米)：</label>
+        	<input type="number" id="num1" name="num1" value="300"><br>
+
+			<button type="button" onclick="submitScale()">确认</button>
+		</form>
+	</body>
+
+	<script>
+		async function submitFilter() {
+			// 获取 TrackBar 控件的值
+			const minVal = document.getElementById('trackbar1').value;
+			const maxVal = document.getElementById('trackbar2').value;
+
+			// 发送 POST 请求到后端
+			await fetch('/write-filter', {
+				method: 'POST',
+				body: JSON.stringify({
+					minVal: minVal,
+					maxVal: maxVal 
+				}),
+				headers: { 'Content-Type': 'application/json' }
+			})
+			.then(response => response.json())
+			.then(data => console.log("trackbar data: " ,data))
+			.catch(error => console.error(error));
+		}
+
+		async function submitThreshold() {
+			const threshold = document.getElementById('trackbar3').value;
+
+			await fetch('/write-threshold', {
+				method: 'POST',
+				body: JSON.stringify({
+					threshold: threshold
+				}),
+				headers: { 'Content-Type': 'application/json' }
+			})
+			.then(response => response.json())
+			.then(data => console.log("trackbar data: " ,data))
+			.catch(error => console.error(error));
+		}
+
+		async function submitScale() {
+			const scale = document.getElementById('num1').value;
+
+			await fetch('/write-scale', {
+				method: 'POST',
+				body: JSON.stringify({
+					scale: scale
+				}),
+				headers: { 'Content-Type': 'application/json' }
+			})
+			.then(response => response.json())
+			.then(data => console.log("scale data: " ,data))
+			.catch(error => console.error(error));
+		}
+
+		window.onbeforeunload = function() {
+            fetch('/turn_off', { method: 'GET' })
+        };
+
+	</script>
+</html>

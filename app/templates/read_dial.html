@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title>两个视频左右放置</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">	
+	</head>
+
+	<body>
+		<div class="container">
+			<div class="video-wrapper">
+				<h1>Video 1</h1>
+				<img src="{{ url_for('main.video_feed_dp_l') }}">
+			</div>
+			
+			<div class="video-wrapper">
+				<h1>Video 2</h1>
+				<img src="{{ url_for('main.video_feed_dp_r') }}">
+			</div>
+		</div>
+		<form>
+			<label for="trackbar1">最小半径：</label>
+			<input type="range" id="trackbar1" name="trackbar1" min="0" max="480" value="80">
+
+			<button type="button" onclick="submitMinRadius()">确认</button>
+		</form>
+		<form>
+			<label for="trackbar2">直线检测阈值：</label>
+			<input type="range" id="trackbar2" name="trackbar2" min="50" max="200" value="80">
+			<label for="trackbar3">最小直线长度：</label>
+			<input type="range" id="trackbar3" name="trackbar3" min="50" max="200" value="120">
+
+			<button type="button" onclick="submitThreshold()">确认</button>
+		</form>
+
+	</body>
+
+	<script>
+		async function submitMinRadius() {
+			// 获取 TrackBar 控件的值
+			const minRadius = document.getElementById('trackbar1').value;
+
+			// 发送 POST 请求到后端
+			await fetch('/write-circles-dial', {
+				method: 'POST',
+				body: JSON.stringify({
+					minRadius: minRadius,
+				}),
+				headers: { 'Content-Type': 'application/json' }
+			})
+			.then(response => response.json())
+			.then(data => console.log("trackbar data: " ,data))
+			.catch(error => console.error(error));
+		}
+
+		async function submitThreshold() {
+			const threshold = document.getElementById('trackbar2').value;
+			const minLineLength= document.getElementById('trackbar3').value;
+
+			await fetch('/write-lines-dial', {
+				method: 'POST',
+				body: JSON.stringify({
+					threshold: threshold,
+					minLineLength: minLineLength
+				}),
+				headers: { 'Content-Type': 'application/json' }
+			})
+			.then(response => response.json())
+			.then(data => console.log("trackbar data: " ,data))
+			.catch(error => console.error(error));
+		}
+
+		window.onbeforeunload = function() {
+            fetch('/turn_off', { method: 'GET' })
+        };
+
+	</script>
+</html>
